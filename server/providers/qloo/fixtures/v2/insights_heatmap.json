@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "ms": 601,
+  "rateHeaders": {
+    "x-month-ratelimit-remaining": "9863",
+    "x-second-ratelimit-reset": "0.72"
+  },
+  "success": true,
+  "keys": [
+    "success",
+    "results",
+    "query"
+  ],
+  "resultsKeys": [
+    "heatmap"
+  ],
+  "entityCount": 0,
+  "entitySample": [],
+  "shapeHint": "insights_heatmap",
+  "emptyOn200": false
+}

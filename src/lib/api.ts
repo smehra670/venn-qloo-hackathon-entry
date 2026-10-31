@@ -1,0 +1,238 @@
+import { AnchorResolutionSchema, CardsRequest, CardsResponse, RefillRequest, RefillResponse, BriefSchema, ChatResponseSchema, ComparePayloadSchema, HeatmapSchema, PartnerSchema, ProofResultSchema, QlooCallRecordSchema, RunResultSchema } from "@shared/schemas";
+import type { AnchorResolution, Brief, BriefLength, BriefTone, BusinessInput, BusinessType, ChatResponse, ComparePayload, ExampleInput, Heatmap, Partner, ProofResult, ProviderName, QlooCallRecord, RunResult, RunStatus } from "@shared/types";
+import { z } from "zod";
+
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+async function request<T>(path: string, init: RequestInit | undefined, parse: (value: unknown) => T): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
+  if (response.status === 204) return parse(null);
+  const text = await response.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+  }
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
+        ? payload.error
+        : "Something went wrong. Please try again.";
+    throw new ApiError(message, response.status);
+  }
+  return parse(payload);
+}
+
+const HealthSchema = z
+  .object({
+    ok: z.literal(true),
+    provider: z.enum(["mock", "qloo", "snapshot"]),
+    providerLabel: z.string(),
+    demo: z.boolean(),
+    version: z.string(),
+    llm: z.object({ enabled: z.boolean() }).passthrough().optional(),
+  })
+  .passthrough();
+
+const MetaSchema = z.object({
+  businessTypes: z.array(z.object({ id: z.string(), label: z.string() })),
+  demoCities: z.array(z.string()),
+  examples: z.array(
+    z.object({
+      businessType: z.string(),
+      city: z.string(),
+      anchors: z.array(z.string()),
+      businessName: z.string().optional(),
+    }),
+  ),
+});
+
+export interface Health {
+  ok: true;
+  provider: ProviderName;
+  providerLabel: string;
+  demo: boolean;
+  version: string;
+  llm?: { enabled: boolean };
+}
+
+export interface Meta {
+  businessTypes: { id: BusinessType; label: string }[];
+  demoCities: string[];
+  examples: ExampleInput[];
+}
+
+export function getHealth(): Promise<Health> {
+  return request("/api/health", undefined, (value) => HealthSchema.parse(value));
+}
+
+export function getMeta(): Promise<Meta> {
+  return request("/api/meta", undefined, (value) => {
+    const parsed = MetaSchema.parse(value);
+    return {
+      businessTypes: parsed.businessTypes as Meta["businessTypes"],
+      demoCities: parsed.demoCities,
+      examples: parsed.examples as ExampleInput[],
+    };
+  });
+}
+
+export function resolveAnchors(
+  anchors: string[],
+  opts?: { city?: string; businessType?: BusinessType; goal?: string; skipAi?: boolean },
+): Promise<AnchorResolution[]> {
+  return request(
+    "/api/anchors/resolve",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        anchors,
+        city: opts?.city,
+        businessType: opts?.businessType,
+        goal: opts?.goal,
+        skipAi: opts?.skipAi,
+      }),
+    },
+    (value) => z.array(AnchorResolutionSchema).parse(value),
+  );
+}
+
+/** Swipe cards give up after this long; the panel then shows the "not available" fallback. */
+export const CARDS_TIMEOUT_MS = 8000;
+
+function withTimeout(signal: AbortSignal | undefined): AbortSignal {
+  const timeout = AbortSignal.timeout(CARDS_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+/** `POST /api/anchors/cards`: the Setup swipe deck. Request and response are both validated. */
+export function getSwipeCards(req: CardsRequest, signal?: AbortSignal): Promise<CardsResponse> {
+  const body = CardsRequest.parse(req);
+  return request("/api/anchors/cards", { method: "POST", body: JSON.stringify(body), signal: withTimeout(signal) }, (value) =>
+    CardsResponse.parse(value),
+  );
+}
+
+/** `POST /api/anchors/cards/refill`: up to 6 more cards from the person's Yeses. */
+export function getRefillCards(req: RefillRequest, signal?: AbortSignal): Promise<RefillResponse> {
+  const body = RefillRequest.parse(req);
+  return request("/api/anchors/cards/refill", { method: "POST", body: JSON.stringify(body), signal: withTimeout(signal) }, (value) =>
+    RefillResponse.parse(value),
+  );
+}
+
+export function createRun(input: BusinessInput): Promise<{ runId: string }> {
+  // `via` is client-side only (kept in venn:input): a swiped run sends exactly the same request as a typed one.
+  const body: BusinessInput = input.tasteAnchors
+    ? { ...input, tasteAnchors: input.tasteAnchors.map(({ via: _via, ...anchor }) => anchor) }
+    : input;
+  return request("/api/runs", { method: "POST", body: JSON.stringify(body) }, (value) =>
+    z.object({ runId: z.string() }).parse(value),
+  );
+}
+
+export function getRun(id: string): Promise<{ status: RunStatus; result?: RunResult; error?: string }> {
+  return request(`/api/runs/${id}`, undefined, (value) =>
+    z
+      .object({
+        status: z.enum(["running", "done", "error", "cancelled"]),
+        result: RunResultSchema.optional(),
+        error: z.string().optional(),
+      })
+      .parse(value),
+  );
+}
+
+export function cancelRun(id: string): Promise<void> {
+  return request(`/api/runs/${id}`, { method: "DELETE" }, () => undefined);
+}
+
+export function expandRun(id: string, partnerId: string): Promise<{ added: Partner[]; message?: string }> {
+  return request(`/api/runs/${id}/expand`, { method: "POST", body: JSON.stringify({ partnerId }) }, (value) =>
+    z.object({ added: z.array(PartnerSchema), message: z.string().optional() }).parse(value),
+  );
+}
+
+export function getHeatmap(id: string, partnerId: string): Promise<Heatmap | null> {
+  return request(`/api/runs/${id}/heatmap?partnerId=${encodeURIComponent(partnerId)}`, undefined, (value) => {
+    if (value === null) return null;
+    return HeatmapSchema.parse(value);
+  });
+}
+
+export interface CreateBriefOptions {
+  variant: number;
+  tone?: BriefTone;
+  length?: BriefLength;
+  regenerate?: boolean;
+}
+
+export function createBrief(id: string, partnerId: string, options: CreateBriefOptions): Promise<Brief> {
+  return request(
+    `/api/runs/${id}/brief`,
+    { method: "POST", body: JSON.stringify({ partnerId, ...options }) },
+    (value) => BriefSchema.parse(value),
+  );
+}
+
+export function postProof(id: string): Promise<ProofResult> {
+  return request(`/api/runs/${id}/proof`, { method: "POST" }, (value) => ProofResultSchema.parse(value));
+}
+
+export function postChat(id: string, message: string): Promise<ChatResponse> {
+  return request(`/api/runs/${id}/chat`, { method: "POST", body: JSON.stringify({ message }) }, (value) =>
+    ChatResponseSchema.parse(value),
+  );
+}
+
+export interface CheckPartnerOptions {
+  name: string;
+  entityHint?: string;
+}
+
+export function postCheck(id: string, options: CheckPartnerOptions): Promise<{ partner: Partner; message?: string }> {
+  return request(`/api/runs/${id}/check`, { method: "POST", body: JSON.stringify(options) }, (value) =>
+    z.object({ partner: PartnerSchema, message: z.string().optional() }).parse(value),
+  );
+}
+
+export function createShare(id: string): Promise<{ token: string; expiresAt: number }> {
+  return request(`/api/runs/${id}/share`, { method: "POST" }, (value) =>
+    z.object({ token: z.string(), expiresAt: z.number() }).parse(value),
+  );
+}
+
+export function getShare(token: string): Promise<{ result: RunResult }> {
+  return request(`/api/share/${encodeURIComponent(token)}`, undefined, (value) =>
+    z.object({ result: RunResultSchema }).parse(value),
+  );
+}
+
+export function postCompare(id: string, partnerId: string): Promise<ComparePayload> {
+  return request(`/api/runs/${id}/compare`, { method: "POST", body: JSON.stringify({ partnerId }) }, (value) =>
+    ComparePayloadSchema.parse(value),
+  );
+}
+
+export function getCallLog(id: string): Promise<QlooCallRecord[]> {
+  return request(`/api/runs/${id}/calls`, undefined, (value) =>
+    z.object({ calls: z.array(QlooCallRecordSchema) }).parse(value).calls,
+  );
+}

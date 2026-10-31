@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "ms": 157,
+  "rateHeaders": {
+    "x-month-ratelimit-remaining": "9866",
+    "x-second-ratelimit-reset": "0.43"
+  },
+  "success": true,
+  "keys": [
+    "success",
+    "results"
+  ],
+  "resultsKeys": [
+    "demographics"
+  ],
+  "entityCount": 0,
+  "entitySample": [],
+  "shapeHint": "demographics",
+  "emptyOn200": true
+}

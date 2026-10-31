@@ -1,0 +1,17 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+logs
+*.log
+.DS_Store
+*.tsbuildinfo
+data/
+# SQLite store only. The setup preview JSON lives under src/data and must ship with the client build.
+!src/data/
+!src/data/**
+# Local/legacy snapshot dir; committed demos live under server/snapshots/
+snapshots/
+!server/snapshots/
+!server/snapshots/**

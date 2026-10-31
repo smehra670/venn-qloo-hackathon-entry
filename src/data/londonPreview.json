@@ -1,0 +1,96 @@
+{
+  "businessName": "Brew & Co",
+  "city": "London",
+  "captureDate": "2026-10-15",
+  "anchors": [
+    "Aesop",
+    "Radiohead",
+    "pilates"
+  ],
+  "partners": [
+    {
+      "id": "C167F308-1187-4358-91C8-15005020560F",
+      "name": "VIU Eyewear",
+      "matchScore": 96,
+      "kind": "retail"
+    },
+    {
+      "id": "9082F37F-5FFC-44A5-84C3-5C1CFD68F47A",
+      "name": "Rains",
+      "matchScore": 92,
+      "kind": "fashion"
+    },
+    {
+      "id": "DB4CE34E-3A63-4947-946F-9D52502C5762",
+      "name": "Patagonia",
+      "matchScore": 80,
+      "kind": "retail"
+    },
+    {
+      "id": "1BFF764A-D06D-48CA-9075-1E0F2A3FCE3D",
+      "name": "Fjällräven",
+      "matchScore": 77,
+      "kind": "retail"
+    },
+    {
+      "id": "6845AB5A-922E-43B0-9BB8-BFE6BE7FAAB0",
+      "name": "Psycle London",
+      "matchScore": 74,
+      "kind": "fitness"
+    },
+    {
+      "id": "2A3716E5-2755-46A2-A06C-1F5486497457",
+      "name": "Barbican Centre",
+      "matchScore": 74,
+      "kind": "culture"
+    },
+    {
+      "id": "413FC08C-B7EB-4CA8-8A83-C700B871F260",
+      "name": "Daylesford Organic",
+      "matchScore": 74,
+      "kind": "food"
+    },
+    {
+      "id": "6FE76B83-18DA-41CC-94B8-EC89FD758150",
+      "name": "Tate Modern",
+      "matchScore": 74,
+      "kind": "culture"
+    },
+    {
+      "id": "155ED059-5333-4443-845C-92D69DDB7C7E",
+      "name": "Core Collective",
+      "matchScore": 73,
+      "kind": "fitness"
+    },
+    {
+      "id": "46D0ED15-0F32-4901-B258-11595FDFF8C9",
+      "name": "Columbia Road Flower Market",
+      "matchScore": 73,
+      "kind": "culture"
+    },
+    {
+      "id": "CF3CFD71-0320-47D1-82C5-9D5A28944FA7",
+      "name": "RY X",
+      "matchScore": 70,
+      "kind": "music"
+    },
+    {
+      "id": "189161B3-16FF-4576-B166-12307EB05CF3",
+      "name": "The Temper Trap",
+      "matchScore": 63,
+      "kind": "music"
+    },
+    {
+      "id": "D1ED5ED1-4BC1-4483-9897-AE553887B944",
+      "name": "Junip",
+      "matchScore": 58,
+      "kind": "music"
+    },
+    {
+      "id": "427D64F7-5240-466D-82E3-D8FFE86EB5DB",
+      "name": "Fink",
+      "matchScore": 52,
+      "kind": "music"
+    }
+  ]
+}
